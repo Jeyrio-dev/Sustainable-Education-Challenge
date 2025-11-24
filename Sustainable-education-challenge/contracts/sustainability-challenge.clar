@@ -353,3 +353,126 @@
         (ok true)
     )
 )
+
+;; Read-only functions
+(define-read-only (get-submission (submission-id uint))
+    (map-get? submissions { submission-id: submission-id })
+)
+
+(define-read-only (get-student-submission (student principal) (season uint))
+    (map-get? student-submissions { student: student, season: season })
+)
+
+(define-read-only (get-winner (season uint) (rank uint))
+    (map-get? winners { season: season, rank: rank })
+)
+
+(define-read-only (is-contest-active)
+    (ok (var-get contest-active))
+)
+
+(define-read-only (get-current-season)
+    (ok (var-get current-season))
+)
+
+(define-read-only (get-submission-counter)
+    (ok (var-get submission-counter))
+)
+
+(define-read-only (has-voted (voter principal) (submission-id uint))
+    (is-some (map-get? votes { voter: voter, submission-id: submission-id }))
+)
+
+(define-read-only (get-mentor-info (mentor principal))
+    (map-get? mentors { mentor: mentor })
+)
+
+(define-read-only (get-category-info (category (string-ascii 50)))
+    (map-get? categories { category: category })
+)
+
+(define-read-only (get-season-stats (season uint))
+    (map-get? season-stats { season: season })
+)
+
+(define-read-only (get-max-submissions)
+    (ok (var-get max-submissions-per-season))
+)
+
+(define-read-only (get-min-votes)
+    (ok (var-get min-votes-to-win))
+)
+
+(define-read-only (get-voting-period)
+    (ok (var-get voting-period-blocks))
+)
+
+(define-read-only (is-submission-verified (submission-id uint))
+    (match (map-get? submissions { submission-id: submission-id })
+        submission (ok (get verified submission))
+        (err err-not-found)
+    )
+)
+
+(define-read-only (get-submission-votes (submission-id uint))
+    (match (map-get? submissions { submission-id: submission-id })
+        submission (ok (get votes submission))
+        (err err-not-found)
+    )
+)
+
+(define-read-only (get-submission-impact-score (submission-id uint))
+    (match (map-get? submissions { submission-id: submission-id })
+        submission (ok (get impact-score submission))
+        (err err-not-found)
+    )
+)
+
+(define-read-only (get-submission-category (submission-id uint))
+    (match (map-get? submissions { submission-id: submission-id })
+        submission (ok (get category submission))
+        (err err-not-found)
+    )
+)
+
+(define-read-only (get-submission-student (submission-id uint))
+    (match (map-get? submissions { submission-id: submission-id })
+        submission (ok (get student submission))
+        (err err-not-found)
+    )
+)
+
+(define-read-only (get-submission-mentor (submission-id uint))
+    (match (map-get? submissions { submission-id: submission-id })
+        submission (ok (get mentor submission))
+        (err err-not-found)
+    )
+)
+
+(define-read-only (is-mentor-verified (mentor principal))
+    (match (map-get? mentors { mentor: mentor })
+        mentor-info (ok (get verified mentor-info))
+        (ok false)
+    )
+)
+
+(define-read-only (get-mentor-student-count (mentor principal))
+    (match (map-get? mentors { mentor: mentor })
+        mentor-info (ok (get students-mentored mentor-info))
+        (ok u0)
+    )
+)
+
+(define-read-only (is-category-active (category (string-ascii 50)))
+    (match (map-get? categories { category: category })
+        category-info (ok (get active category-info))
+        (ok false)
+    )
+)
+
+(define-read-only (get-category-submissions-count (category (string-ascii 50)))
+    (match (map-get? categories { category: category })
+        category-info (ok (get submissions-count category-info))
+        (ok u0)
+    )
+)
