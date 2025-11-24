@@ -74,3 +74,73 @@
         completed: bool
     }
 )
+
+;; Submit sustainability solution
+;; #[allow(unchecked_data)]
+(define-public (submit-solution (category (string-ascii 50)) (description (string-ascii 200)))
+    (let
+        (
+            (new-id (+ (var-get submission-counter) u1))
+            (season (var-get current-season))
+            (current-stats (default-to 
+                { total-submissions: u0, total-votes: u0, start-block: stacks-block-height, end-block: u0, completed: false }
+                (map-get? season-stats { season: season })))
+        )
+        (asserts! (var-get contest-active) err-contest-closed)
+        (asserts! (is-none (map-get? student-submissions { student: tx-sender, season: season })) err-already-submitted)
+        (asserts! (< (get total-submissions current-stats) (var-get max-submissions-per-season)) err-submission-limit-reached)
+        
+        (map-set submissions
+            { submission-id: new-id }
+            {
+                student: tx-sender,
+                category: category,
+                description: description,
+                impact-score: u0,
+                votes: u0,
+                season: season,
+                timestamp: stacks-block-height,
+                verified: false,
+                mentor: none
+            }
+        )
+        (map-set student-submissions
+            { student: tx-sender, season: season }
+            { submitted: true, submission-id: new-id }
+        )
+        (map-set season-stats
+            { season: season }
+            (merge current-stats { total-submissions: (+ (get total-submissions current-stats) u1) })
+        )
+        (var-set submission-counter new-id)
+        (ok new-id)
+    )
+)
+
+;; Vote for submission
+;; #[allow(unchecked_data)]
+(define-public (vote-for-submission (submission-id uint))
+    (let
+        (
+            (submission (unwrap! (map-get? submissions { submission-id: submission-id }) err-not-found))
+            (season (get season submission))
+            (current-stats (default-to 
+                { total-submissions: u0, total-votes: u0, start-block: stacks-block-height, end-block: u0, completed: false }
+                (map-get? season-stats { season: season })))
+        )
+        (asserts! (is-none (map-get? votes { voter: tx-sender, submission-id: submission-id })) err-already-voted)
+        (map-set votes
+            { voter: tx-sender, submission-id: submission-id }
+            { voted: true }
+        )
+        (map-set submissions
+            { submission-id: submission-id }
+            (merge submission { votes: (+ (get votes submission) u1) })
+        )
+        (map-set season-stats
+            { season: season }
+            (merge current-stats { total-votes: (+ (get total-votes current-stats) u1) })
+        )
+        (ok true)
+    )
+)
