@@ -218,3 +218,138 @@
         (ok true)
     )
 )
+
+;; Register mentor
+;; #[allow(unchecked_data)]
+(define-public (register-mentor (mentor principal))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set mentors
+            { mentor: mentor }
+            { verified: true, students-mentored: u0 }
+        )
+        (ok true)
+    )
+)
+
+;; Remove mentor
+;; #[allow(unchecked_data)]
+(define-public (remove-mentor (mentor principal))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-delete mentors { mentor: mentor })
+        (ok true)
+    )
+)
+
+;; Add category
+;; #[allow(unchecked_data)]
+(define-public (add-category (category (string-ascii 50)))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set categories
+            { category: category }
+            { active: true, submissions-count: u0 }
+        )
+        (ok true)
+    )
+)
+
+;; Deactivate category
+;; #[allow(unchecked_data)]
+(define-public (deactivate-category (category (string-ascii 50)))
+    (let
+        (
+            (category-info (unwrap! (map-get? categories { category: category }) err-not-found))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set categories
+            { category: category }
+            (merge category-info { active: false })
+        )
+        (ok true)
+    )
+)
+
+;; Update max submissions
+;; #[allow(unchecked_data)]
+(define-public (update-max-submissions (new-max uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (var-set max-submissions-per-season new-max)
+        (ok true)
+    )
+)
+
+;; Update min votes to win
+;; #[allow(unchecked_data)]
+(define-public (update-min-votes (new-min uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (var-set min-votes-to-win new-min)
+        (ok true)
+    )
+)
+
+;; Update voting period
+;; #[allow(unchecked_data)]
+(define-public (update-voting-period (blocks uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (var-set voting-period-blocks blocks)
+        (ok true)
+    )
+)
+
+;; Toggle contest status
+(define-public (toggle-contest (active bool))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (var-set contest-active active)
+        (ok true)
+    )
+)
+
+;; Start new season
+;; #[allow(unchecked_data)]
+(define-public (start-new-season)
+    (let
+        (
+            (new-season (+ (var-get current-season) u1))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set season-stats
+            { season: new-season }
+            { 
+                total-submissions: u0,
+                total-votes: u0,
+                start-block: stacks-block-height,
+                end-block: u0,
+                completed: false
+            }
+        )
+        (var-set current-season new-season)
+        (var-set contest-active true)
+        (ok new-season)
+    )
+)
+
+;; End current season
+;; #[allow(unchecked_data)]
+(define-public (end-season)
+    (let
+        (
+            (season (var-get current-season))
+            (current-stats (default-to 
+                { total-submissions: u0, total-votes: u0, start-block: stacks-block-height, end-block: u0, completed: false }
+                (map-get? season-stats { season: season })))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set season-stats
+            { season: season }
+            (merge current-stats { end-block: stacks-block-height, completed: true })
+        )
+        (var-set contest-active false)
+        (ok true)
+    )
+)
