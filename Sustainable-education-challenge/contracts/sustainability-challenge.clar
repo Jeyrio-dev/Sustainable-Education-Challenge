@@ -144,3 +144,77 @@
         (ok true)
     )
 )
+
+;; Set winner
+;; #[allow(unchecked_data)]
+(define-public (set-winner (submission-id uint) (rank uint) (reward uint))
+    (let
+        (
+            (submission (unwrap! (map-get? submissions { submission-id: submission-id }) err-not-found))
+            (season (var-get current-season))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (>= (get votes submission) (var-get min-votes-to-win)) err-insufficient-votes)
+        (asserts! (<= rank u10) err-invalid-rank)
+        (map-set winners
+            { season: season, rank: rank }
+            { submission-id: submission-id, student: (get student submission), reward: reward }
+        )
+        (ok true)
+    )
+)
+
+;; Update impact score
+;; #[allow(unchecked_data)]
+(define-public (update-impact-score (submission-id uint) (score uint))
+    (let
+        (
+            (submission (unwrap! (map-get? submissions { submission-id: submission-id }) err-not-found))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (<= score u100) err-invalid-score)
+        (map-set submissions
+            { submission-id: submission-id }
+            (merge submission { impact-score: score })
+        )
+        (ok true)
+    )
+)
+
+;; Verify submission
+;; #[allow(unchecked_data)]
+(define-public (verify-submission (submission-id uint))
+    (let
+        (
+            (submission (unwrap! (map-get? submissions { submission-id: submission-id }) err-not-found))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (map-set submissions
+            { submission-id: submission-id }
+            (merge submission { verified: true })
+        )
+        (ok true)
+    )
+)
+
+;; Assign mentor to submission
+;; #[allow(unchecked_data)]
+(define-public (assign-mentor (submission-id uint) (mentor principal))
+    (let
+        (
+            (submission (unwrap! (map-get? submissions { submission-id: submission-id }) err-not-found))
+            (mentor-info (default-to { verified: false, students-mentored: u0 } (map-get? mentors { mentor: mentor })))
+        )
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (get verified mentor-info) err-invalid-mentor)
+        (map-set submissions
+            { submission-id: submission-id }
+            (merge submission { mentor: (some mentor) })
+        )
+        (map-set mentors
+            { mentor: mentor }
+            (merge mentor-info { students-mentored: (+ (get students-mentored mentor-info) u1) })
+        )
+        (ok true)
+    )
+)
